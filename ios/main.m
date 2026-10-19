@@ -64,7 +64,7 @@ void front_run(void (*guest)(void)) {
     NSString *directory = [[documents stringByAppendingPathComponent:@"work/shaders"]
         stringByAppendingPathComponent:@"b-" DMSH_CHAIN];
     CFAbsoluteTime began = CFAbsoluteTimeGetCurrent();
-    fprintf(stderr, "SHADER_PREP begin chain=%s scope=all platform=ios\n", DMSH_CHAIN);
+    fprintf(stderr, "SHADER_PREP begin chain=%s scope=needed platform=ios\n", DMSH_CHAIN);
     unsigned failed = shader_prep_run(metal_layer.device, directory, ^(unsigned count, unsigned total) {
         if (!(count % 500) || count == total) fprintf(stderr, "SHADER_PREP progress=%u/%u physical_gib=%.3f available_mib=%.1f\n",
             count,total,physical_gib(),os_proc_available_memory()/1048576.0);

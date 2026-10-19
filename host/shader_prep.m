@@ -23,7 +23,6 @@ static BOOL layered_library(NSString *name) {
 }
 
 static NSArray<NSString *> *preparation_files(NSString *directory, NSArray<NSString *> *files) {
-#if !TARGET_OS_IPHONE
     const char *all = getenv("ZELDA_SHADER_PREP_ALL");
     if (ir_enabled() && !(all && atoi(all))) {
         NSArray *entries = [NSFileManager.defaultManager contentsOfDirectoryAtPath:ir_directory(directory) error:nil];
@@ -42,9 +41,6 @@ static NSArray<NSString *> *preparation_files(NSString *directory, NSArray<NSStr
             return pending;
         }
     }
-#else
-    (void)directory;
-#endif
     return files;
 }
 

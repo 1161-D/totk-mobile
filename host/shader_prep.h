@@ -7,7 +7,7 @@
 #import <Metal/Metal.h>
 #include <stdbool.h>
 #include "shader_status.h"
-// A verified macOS IR library, or nil so the caller can compile the original source.
+// A verified offline Metal IR library, or nil so the caller can compile the original source.
 id<MTLLibrary> shader_ir_load(id<MTLDevice> device, NSString *source_path, const void *source, size_t length, bool layered);
 void shader_ir_report(const char *phase);
 // Compile source libraries before the guest starts, using the runtime's exact transforms/options.

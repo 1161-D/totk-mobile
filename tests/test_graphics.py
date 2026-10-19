@@ -1582,4 +1582,6 @@ int main(void) {
         with self.assertRaises(ValueError): adapt_objects('changed')
         with self.assertRaises(ValueError): adapt_backend('changed')
         backend = adapt_backend((CORE / 'gfx/nvn/nvn_mtl.m').read_text())
-        self.assertIn('swizzle:channels', backend)
+        self.assertIn('#include "nvn_texture_swizzle.inc"', backend)
+        self.assertIn('r.has_v && r.v.set_format ? r.v.format : r.t.d.format', backend)
+        self.assertIn('v = zelda_texture_swizzle(v, format, s);', backend)

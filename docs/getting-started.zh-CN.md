@@ -62,7 +62,7 @@ DM_PRESENT_LINK=0 ZELDA_TIMEOUT_SECONDS=0 ./script/build_and_run.sh
 
 ## Mac：可选的离线着色器库
 
-Mac 构建默认在离线 Metal IR 库存在且校验通过时加载它们；缺失、过期或损坏时回退到 MSL 源码。如需生成，先在 Xcode 中安装 Metal Toolchain 组件（用 `xcrun --sdk macosx metal --version` 检查），退出游戏后运行：
+Mac 和 iOS 构建默认在离线 Metal IR 库存在且校验通过时加载它们；缺失、过期或损坏时回退到 MSL 源码。如需生成，先在 Xcode 中安装 Metal Toolchain 组件（用 `xcrun --sdk macosx metal --version` 检查），退出游戏后运行：
 
 ```sh
 mkdir -p work/tmp work/logs
@@ -72,9 +72,11 @@ PYTHONDONTWRITEBYTECODE=1 TMPDIR="$PWD/work/tmp/" \
   work/venv/bin/python script/build_shader_ir.py work/shaders/b-<chain> --jobs 2
 ```
 
-把 `<chain>` 换成 `work/build/dmsh_chain.h` 中的值。生成过程可以中断后继续，不会覆盖 MSL 源码。缓存位于 `work/shaders/ir-macos/`，不能用于 iOS。对照源码路径可用 `ZELDA_SHADER_IR=0` 启动；强制完整准备一轮可用 `ZELDA_SHADER_PREP_ALL=1`。
+把 `<chain>` 换成 `work/build/dmsh_chain.h` 中的值。生成过程可以中断后继续，不会覆盖 MSL 源码。缓存位于 `work/shaders/ir-macos/`；传给 iOS 的统一 Metal 库也沿用这个历史目录名。对照源码路径可用 `ZELDA_SHADER_IR=0` 启动；强制完整准备一轮可用 `ZELDA_SHADER_PREP_ALL=1`。
 
-## iPad：构建与安装
+## iPhone / iPad：构建与安装
+
+同一个应用同时支持 iPhone 和 iPad，架构为 arm64，最低部署版本为 iOS / iPadOS 26。构建时不需要连接设备；安装时开发签名的描述文件必须包含目标设备，新设备需要先在 Xcode 注册并更新签名。
 
 先在 Mac 上完成准备（资源、模块、MSL、渲染堆）。设备上不运行 Python 着色器翻译器，新的客体着色器请求需要回到 Mac 翻译。
 
@@ -104,12 +106,14 @@ TMPDIR="$PWD/work/tmp/" PIP_CACHE_DIR="$PWD/work/ios/pip-cache" \
 ./script/ios.sh logs
 ```
 
-每一步成功后再进行下一步；`ready` 必须在完整回读通过之后执行。设备上至少保留约 25 GB 可用空间。传输器会保留 2 GiB 安全余量，并拒绝覆盖内容不同的已有存档。
+如果已构建上面的离线 IR 缓存，在启动前执行 `./script/ios.sh transfer ir`。它只传对应缓存，保留源码和存档。完整缓存可让 iOS 跳过启动前的全库准备，实际加载每个库时仍检查身份和内容；缺失、过期或平台拒绝时回退源码。首次 IR 启动仍可能花时间创建设备管线。
+
+每一步成功后再进行下一步；`ready` 必须在两类资源传输完成之后执行。默认逐个文件做完整内容校验；如需跳过内容哈希和回读，在 `romfs`、`shaders` 或 `ir` 命令后添加 `--no-verify`。此模式保留文件大小检查、按长度续传，并把回执标为未校验；它不能发现大小相同的数据损坏，也不适用于存档。设备上至少保留约 25 GB 可用空间。传输器会保留 2 GiB 安全余量，并拒绝覆盖内容不同的已有存档。
 
 > [!WARNING]
-> 不要用 `devicectl` 直接推送大型资源文件，这可能耗尽 Mac 的内存和内置磁盘。请始终使用 `script/ios.sh transfer`：它通过 AFC 分块传输、支持断点续传，并逐个文件回读校验。
+> 不要用 `devicectl` 直接推送大型资源文件，这可能耗尽 Mac 的内存和内置磁盘。请始终使用 `script/ios.sh transfer`：它通过 AFC 分块传输、支持断点续传，默认逐个文件回读校验。
 
-iPad 普通启动不会自动读档。设备保存独立的存档副本，不会回写 Mac。设备上首次准备着色器可能接近一小时；缓存就绪后的启动通常不到一分钟。
+iOS 普通启动不会自动读档。每台设备保存独立的存档副本，不会回写 Mac。设备上首次准备着色器可能接近一小时；已测试的 M1 iPad 在缓存就绪后通常不到一分钟。iPhone 的准备耗时、内存余量和游戏性能仍需单独实测。
 
 ## 故障排查
 

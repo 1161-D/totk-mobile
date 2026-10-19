@@ -62,7 +62,7 @@ The app at `work/build/Zelda-Mobile.app` uses resources inside the project and c
 
 ## Mac: optional offline shader libraries
 
-By default the Mac build loads verified offline Metal IR libraries when they exist and falls back to the MSL source when they are missing, stale or damaged. To build them, install the Metal Toolchain component in Xcode (check with `xcrun --sdk macosx metal --version`), quit the game, and run:
+By default both the Mac and iOS builds load verified offline Metal IR libraries when they exist and fall back to the MSL source when they are missing, stale or damaged. To build them, install the Metal Toolchain component in Xcode (check with `xcrun --sdk macosx metal --version`), quit the game, and run:
 
 ```sh
 mkdir -p work/tmp work/logs
@@ -72,9 +72,11 @@ PYTHONDONTWRITEBYTECODE=1 TMPDIR="$PWD/work/tmp/" \
   work/venv/bin/python script/build_shader_ir.py work/shaders/b-<chain> --jobs 2
 ```
 
-Replace `<chain>` with the value in `work/build/dmsh_chain.h`. The build can be interrupted and resumed and never overwrites the MSL source. The cache lives in `work/shaders/ir-macos/` and cannot be used on iOS. To compare against the source path, launch with `ZELDA_SHADER_IR=0`; to force a full preparation pass, use `ZELDA_SHADER_PREP_ALL=1`.
+Replace `<chain>` with the value in `work/build/dmsh_chain.h`. The build can be interrupted and resumed and never overwrites the MSL source. The cache lives in `work/shaders/ir-macos/`; this historical name is also used for the unified Metal libraries transferred to iOS. To compare against the source path, launch with `ZELDA_SHADER_IR=0`; to force a full preparation pass, use `ZELDA_SHADER_PREP_ALL=1`.
 
-## iPad: build and install
+## iPhone / iPad: build and install
+
+The same app targets both iPhone and iPad, using arm64 with a minimum deployment target of iOS / iPadOS 26. A device does not need to be connected to build the app. Installation requires a development provisioning profile that includes the target device; register a new device in Xcode and refresh the signing before installing.
 
 Finish the Mac preparation first (resources, modules, MSL, render heap). The device does not run the Python shader translator; new guest shader requests must be translated on the Mac.
 
@@ -104,12 +106,14 @@ TMPDIR="$PWD/work/tmp/" PIP_CACHE_DIR="$PWD/work/ios/pip-cache" \
 ./script/ios.sh logs
 ```
 
-Run each step only after the previous one succeeds; `ready` must come after the full read-back has passed. Keep at least about 25 GB free on the device. The transfer keeps a 2 GiB safety margin and refuses to overwrite a different existing save.
+If the offline IR cache above has already been built, run `./script/ios.sh transfer ir` before launching. It transfers only that cache, retaining the source files and saves. A complete cache lets iOS defer the full source-library preparation pass; every library is still checked when loaded, with source fallback if it is missing, stale or rejected. Device pipeline creation may still take time on the first IR launch.
+
+Run each step only after the previous one succeeds; `ready` must come after both asset transfers finish. Transfers verify all content by default. To skip content hashes and read-back, append `--no-verify` to the `romfs`, `shaders`, or `ir` commands. This mode checks file sizes, resumes by length, and marks its receipts as unverified; it cannot detect same-size corruption and does not apply to saves. Keep at least about 25 GB free on the device. The transfer keeps a 2 GiB safety margin and refuses to overwrite a different existing save.
 
 > [!WARNING]
-> Do not push the large resource files with `devicectl` directly. That can exhaust the Mac's memory and internal disk. Always use `script/ios.sh transfer`, which copies over AFC in bounded chunks, can resume, and verifies every file.
+> Do not push the large resource files with `devicectl` directly. That can exhaust the Mac's memory and internal disk. Always use `script/ios.sh transfer`, which copies over AFC in bounded chunks, can resume, and verifies every file by default.
 
-A normal iPad launch does not load a save automatically. The device keeps its own copy of the saves and never writes back to the Mac. The first on-device shader preparation can take most of an hour; later launches with a warm cache take well under a minute.
+A normal iOS launch does not load a save automatically. Each device keeps its own copy of the saves and never writes back to the Mac. The first on-device shader preparation can take most of an hour; later launches with a warm cache take well under a minute on the tested M1 iPad. Shader preparation time, memory headroom and game performance must be measured separately on an iPhone.
 
 ## Troubleshooting
 

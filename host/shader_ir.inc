@@ -6,7 +6,6 @@
 #include <time.h>
 #include "shader_ir_identity.h"
 
-#if !TARGET_OS_IPHONE
 static _Atomic uint64_t ir_hits, ir_missing, ir_rejected, ir_failed;
 static _Atomic uint64_t ir_metadata_ns, ir_verify_ns, ir_library_ns;
 
@@ -16,6 +15,7 @@ static BOOL ir_enabled(void) {
 }
 
 static NSString *ir_directory(NSString *source_dir) {
+    // Keep the existing cache identity; unified Metal libraries also load on our iOS 26 minimum.
     return [[[source_dir.stringByDeletingLastPathComponent stringByAppendingPathComponent:@"ir-macos"]
         stringByAppendingPathComponent:source_dir.lastPathComponent] stringByAppendingPathComponent:@ZELDA_SHADER_IR_CONTRACT];
 }
@@ -27,13 +27,8 @@ static NSString *ir_hash(const void *bytes, size_t length) {
     for (unsigned i = 0; i < sizeof hash; i++) snprintf(text + i * 2, 3, "%02x", hash[i]);
     return @(text);
 }
-#endif
 
 id<MTLLibrary> shader_ir_load(id<MTLDevice> device, NSString *source_path, const void *source, size_t length, bool layered) {
-#if TARGET_OS_IPHONE
-    (void)device; (void)source_path; (void)source; (void)length; (void)layered;
-    return nil;
-#else
     if (!ir_enabled() || !device || !source || !length) return nil;
     uint64_t begin = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
     NSString *directory = ir_directory(source_path.stringByDeletingLastPathComponent);
@@ -70,16 +65,11 @@ id<MTLLibrary> shader_ir_load(id<MTLDevice> device, NSString *source_path, const
     atomic_fetch_add(&ir_library_ns, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - verified);
     atomic_fetch_add(library ? &ir_hits : &ir_failed, 1);
     return library;
-#endif
 }
 
 void shader_ir_report(const char *phase) {
-#if !TARGET_OS_IPHONE
     fprintf(stderr, "SHADER_IR phase=%s hits=%llu missing=%llu rejected=%llu load_failed=%llu metadata_worker_ms=%.1f verify_worker_ms=%.1f library_worker_ms=%.1f\n", phase,
         (unsigned long long)atomic_load(&ir_hits), (unsigned long long)atomic_load(&ir_missing),
         (unsigned long long)atomic_load(&ir_rejected), (unsigned long long)atomic_load(&ir_failed),
         atomic_load(&ir_metadata_ns) / 1e6, atomic_load(&ir_verify_ns) / 1e6, atomic_load(&ir_library_ns) / 1e6);
-#else
-    (void)phase;
-#endif
 }

@@ -87,18 +87,18 @@ class InterruptedUpload(Exception):
     pass
 
 
-async def upload(afc, source, target, stop_after=None):
+async def upload(afc, source, target, stop_after=None, *, verify=True):
     target = remote_path(target)
     if source.is_symlink() or not source.is_file(): raise ValueError('source must be a regular file')
     original = source.stat()
-    if original.st_size>64*CHUNK: print(json.dumps({'phase':'hash_source','bytes':original.st_size}),flush=True)
-    expected = local_hash(source)
+    if verify and original.st_size>64*CHUNK: print(json.dumps({'phase':'hash_source','bytes':original.st_size}),flush=True)
+    expected = local_hash(source) if verify else None
     await directory(afc, str(PurePosixPath(target).parent))
     if await afc.exists(target):
         existing = await afc.stat(target)
         if existing['st_ifmt'] != 'S_IFREG': raise ValueError('device target is not a regular file')
-        if existing['st_size'] == original.st_size and await remote_hash(afc, target, original.st_size) == expected:
-            return {'bytes': original.st_size, 'sha256': expected, 'skipped': True, 'resumed': 0}
+        if existing['st_size'] == original.st_size and (not verify or await remote_hash(afc, target, original.st_size) == expected):
+            return {'bytes': original.st_size, 'sha256': expected, 'verified': verify, 'skipped': True, 'resumed': 0}
         # The failed devicectl transfer created only this empty resource file.
         if existing['st_size'] == 0 and target == REMOTE + '/romfs-host.bin': await afc.rm(target)
         else: raise ValueError('refusing to replace existing device data')
@@ -108,7 +108,7 @@ async def upload(afc, source, target, stop_after=None):
         info = await afc.stat(partial)
         if info['st_ifmt'] != 'S_IFREG' or info['st_size'] > original.st_size: raise ValueError('invalid upload checkpoint')
         offset = info['st_size']
-        if await remote_hash(afc, partial, offset) != local_hash(source, offset):
+        if verify and await remote_hash(afc, partial, offset) != local_hash(source, offset):
             raise ValueError('checkpoint content differs; leaving it untouched')
     free = int((await afc.get_device_info())['FSFreeBytes'])
     if free < original.st_size - offset + (2 << 30): raise ValueError('device needs more free storage (2 GiB reserve)')
@@ -130,11 +130,13 @@ async def upload(afc, source, target, stop_after=None):
     now = source.stat()
     if (now.st_ino, now.st_size, now.st_mtime_ns) != (original.st_ino, original.st_size, original.st_mtime_ns):
         raise ValueError('source changed during transfer')
-    if (await afc.stat(partial))['st_size'] != original.st_size or await remote_hash(afc, partial, original.st_size) != expected:
+    if (await afc.stat(partial))['st_size'] != original.st_size:
+        raise ValueError('device file size mismatch')
+    if verify and await remote_hash(afc, partial, original.st_size) != expected:
         raise ValueError('device readback checksum mismatch')
     if await afc.exists(target): raise ValueError('device target appeared during transfer')
     await afc.rename(partial, target)
-    return {'bytes': sent, 'sha256': expected, 'skipped': False, 'resumed': offset}
+    return {'bytes': sent, 'sha256': expected, 'verified': verify, 'skipped': False, 'resumed': offset}
 
 
 async def connect(device):
@@ -176,6 +178,8 @@ async def probe(device):
 
 async def run(args):
     if args.mode == 'probe': return await probe(args.device)
+    if args.no_verify:
+        print(json.dumps({'verification': 'size_only', 'mode': args.mode}), flush=True)
     client, afc = await connect(args.device)
     try:
         if args.mode == 'status':
@@ -197,6 +201,11 @@ async def run(args):
             folder = shaders / ('b-' + chain)
             pairs = [(f, REMOTE + '/shaders/' + str(f.relative_to(shaders))) for f in sorted(folder.iterdir()) if f.suffix in ('.metallib', '.json')]
             pairs += [(shaders / name, REMOTE + '/shaders/' + name) for name in ('shader_map.tsv', 'pso_user.tsv')]
+        elif args.mode == 'ir':
+            from build_shader_ir import cache_directory
+            folder = cache_directory(shaders / ('b-' + chain))
+            pairs = [(f, REMOTE + '/shaders/' + str(f.relative_to(shaders))) for f in sorted(folder.iterdir()) if f.suffix in ('.metallib', '.json')]
+            if not pairs: raise ValueError('build offline Metal IR before transferring its cache')
         elif args.mode == 'seed':
             saved=ROOT/'work/save'
             pairs=[(f,REMOTE+'/save/'+str(f.relative_to(saved))) for f in sorted(saved.rglob('*')) if f.is_file()]
@@ -210,7 +219,8 @@ async def run(args):
         free = int((await afc.get_device_info())['FSFreeBytes'])
         # Per-file checks also account for checkpoints. This first-pass guard avoids partially filling a new install.
         missing = total
-        if args.mode != 'shaders' or await afc.exists(REMOTE+'/shaders'):
+        # If the entire batch fits, per-file remote size queries cannot improve the space decision.
+        if missing + (2 << 30) > free:
             missing = 0
             for source, target in pairs:
                 if not await afc.exists(target):
@@ -224,7 +234,7 @@ async def run(args):
             iterator = iter(pairs)
             while batch := list(itertools.islice(iterator, 4)):
                 async with asyncio.TaskGroup() as group:
-                    tasks=[group.create_task(upload(afc,source,target)) for source,target in batch]
+                    tasks=[group.create_task(upload(afc,source,target,verify=not args.no_verify)) for source,target in batch]
                 results=[task.result() for task in tasks]
                 for (_, target), result in zip(batch, results):
                     report.write(json.dumps({'target': target, **result}) + '\n')
@@ -237,10 +247,12 @@ async def run(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['status', 'probe', 'romfs', 'shaders', 'seed', 'ready'])
+    parser.add_argument('mode', choices=['status', 'probe', 'romfs', 'shaders', 'ir', 'seed', 'ready'])
     parser.add_argument('--device', required=True)
     parser.add_argument('--report')
+    parser.add_argument('--no-verify', action='store_true', help='Skip content hashes and readback for game assets; keep size checks')
     args = parser.parse_args()
-    if args.mode in ('romfs', 'shaders', 'seed') and not args.report: parser.error('--report is required for transfers')
+    if args.no_verify and args.mode not in ('romfs', 'shaders', 'ir'): parser.error('--no-verify applies only to game assets')
+    if args.mode in ('romfs', 'shaders', 'ir', 'seed') and not args.report: parser.error('--report is required for transfers')
     with save_source_lock(ROOT/'work/save.lock') if args.mode=='seed' else nullcontext():
         asyncio.run(run(args))

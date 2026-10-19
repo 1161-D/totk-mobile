@@ -40,7 +40,7 @@ transfer)
     mode=${2:-status}
     report="work/logs/ios/transfer-${mode}-$(date +%Y%m%d-%H%M%S)-$$"
     work/venv/bin/python script/run_guarded.py --seconds 2400 --max-gib 0.5 --report "$report-guard.json" -- \
-        work/ios/transfer-venv/bin/python script/ios_transfer.py "$mode" --device "$ZELDA_IOS_DEVICE" --report "$report.jsonl"
+        work/ios/transfer-venv/bin/python script/ios_transfer.py "$mode" --device "$ZELDA_IOS_DEVICE" --report "$report.jsonl" "${@:3}"
     ;;
-*) echo 'usage: script/ios.sh [build|install|launch [arguments...]|logs|transfer [status|probe|romfs|shaders|seed|ready]]' >&2; exit 2;;
+*) echo 'usage: script/ios.sh [build|install|launch [arguments...]|logs|transfer [status|probe|romfs|shaders|ir|seed|ready] [--no-verify]]' >&2; exit 2;;
 esac

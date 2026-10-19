@@ -1069,18 +1069,14 @@ static void bind_args(id<MTLCommandEncoder> en, int nvn_stage, int metal_vertex,
     if changed < 10:
         raise ValueError('NVN deferred binding readers changed')
     anchor = '    rp->view = (void *)CFBridgingRetain(v);'
+    view_function = 'static id<MTLTexture> tex_by_id(int tid) {'
+    if source.count(view_function) != 1:
+        raise ValueError('NVN texture lookup entry changed')
+    source = source.replace(view_function,
+                            '#include "nvn_texture_swizzle.inc"\nstatic id<MTLTexture> tex_by_id(int tid) {')
     swizzle = '''    unsigned s = r.has_v && r.v.swizzle ? r.v.swizzle : r.t.swizzle;
-    if (s) {
-        const MTLTextureSwizzle components[] = {MTLTextureSwizzleZero, MTLTextureSwizzleOne,
-            MTLTextureSwizzleRed, MTLTextureSwizzleGreen, MTLTextureSwizzleBlue, MTLTextureSwizzleAlpha};
-        MTLTextureSwizzleChannels channels = MTLTextureSwizzleChannelsMake(components[s & 7],
-            components[(s >> 3) & 7], components[(s >> 6) & 7], components[(s >> 9) & 7]);
-        NSUInteger slices = v.textureType == MTLTextureType3D ? 1 : v.arrayLength *
-            (v.textureType == MTLTextureTypeCube || v.textureType == MTLTextureTypeCubeArray ? 6 : 1);
-        v = [v newTextureViewWithPixelFormat:v.pixelFormat textureType:v.textureType
-            levels:NSMakeRange(0, v.mipmapLevelCount) slices:NSMakeRange(0, slices) swizzle:channels];
-        if (!v) MDIE("Zelda texture component swizzle could not be created");
-    }
+    int format = r.has_v && r.v.set_format ? r.v.format : r.t.d.format;
+    v = zelda_texture_swizzle(v, format, s);
 '''
     if source.count(anchor) != 1:
         raise ValueError('NVN Metal texture view implementation changed')
