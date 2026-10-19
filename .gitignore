@@ -1,0 +1,46 @@
+# Game packages, keys and tickets: local only, never committed
+/local/
+*.[nN][sS][zZ]
+*.[nN][sS][pP]
+*.[xX][cC][iI]
+*.[nN][cC][aA]
+*.[nN][cC][zZ]
+*.[xX][cC][iI][zZ]
+*.[pP][fF][sS]0
+*.[nN][pP][dD][mM]
+*.[nN][sS][oO]
+*.[rR][oO][mM][fF][sS]
+*.[bB][iI][nN]
+*.[sS][aA][vV]
+*.[kK][eE][yY][sS]
+*.tik
+*.cert
+ProdKeys*/
+
+# Extracted resources, builds, shaders, saves, caches, logs and temporary files
+work/
+*.app/
+*.ipa
+*.dSYM/
+*.metallib
+*.metal-ar
+*.mobileprovision
+*.p12
+*.p8
+.env
+.env.*
+!.env.example
+
+# Local tooling output
+__pycache__/
+*.pyc
+*.trace
+.DS_Store
+.codex/
+.idea/
+.vscode/
+xcuserdata/
+*.xcuserstate
+
+# User-supplied save folder (copied into work/save)
+/ZELDA_TOTK_SAVE/

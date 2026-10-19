@@ -1,0 +1,12 @@
+# Load the first entry through the game's normal menu, then stop all input.
+# Warm-start route with shorter waits; this is not a memory snapshot. The destination follows your save list.
+# The host starts this script only after shader preparation. Cold/new builds may need longer waits.
+mark first-save-start
+wait 10000
+tap x 150
+wait 1500
+tap x 150
+wait 1500
+tap x 150
+wait 20000
+mark first-save-ready

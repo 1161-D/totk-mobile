@@ -1,0 +1,11 @@
+# Title -> save list -> first save -> Load, then stand still (no further input; never advance the story).
+# A reordered/new save list changes the destination. first-save-fast.input uses shorter, warm-start waits.
+# Append measurement steps (mark / wait / fps / shot / dump / trace) after the scene settles.
+wait 30000
+tap x 120
+wait 3000
+tap x 120
+wait 2500
+tap x 120
+wait 30000
+mark scene
