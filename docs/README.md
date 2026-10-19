@@ -5,7 +5,7 @@
 | I want to… | Read |
 | --- | --- |
 | Know what the project is and what works | [Project overview](../README.md) |
-| Prepare a Mac, launch the game, install on iPad | [Building and running](getting-started.md) |
+| Prepare a Mac, launch the game, install on iPhone or iPad | [Building and running](getting-started.md) |
 | Learn the keyboard, controller and settings | [Controls and settings](controls.md) |
 | Back up or import saves | [Saves](saves.md) |
 | Find the code to change and understand generated files | [Source map](architecture.md) |

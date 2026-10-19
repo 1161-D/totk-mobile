@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Zelda-Mobile runs the Nintendo Switch release of *The Legend of Zelda: Tears of the Kingdom* **v1.4.3** natively on Apple silicon Macs and iPads. The game's ARM64 code executes directly on the Apple CPU, system services are reimplemented by the host, and NVN graphics commands are translated to Metal. The Mac and iOS front ends share one core.
+Zelda-Mobile runs the Nintendo Switch release of *The Legend of Zelda: Tears of the Kingdom* **v1.4.3** natively on Apple silicon Macs and iPads, with an early iPhone build. The game's ARM64 code executes directly on the Apple CPU, system services are reimplemented by the host, and NVN graphics commands are translated to Metal. The Mac and iOS front ends share one core.
 
 > [!IMPORTANT]
 > This project is not affiliated with, authorized or endorsed by Nintendo. The repository contains **source code only**: no game files, updates, keys, saves, game shaders or any other game-derived data, and no instructions for obtaining them. Use only a game and keys that you own and dumped from your own console.
@@ -15,7 +15,7 @@ The project is under active development. You can load a save and play, but a ful
 | --- | --- | --- |
 | Apple silicon Mac | Loading saves and playing scenes, keyboard and Xbox controller (with rumble), audio, cutscenes, 30 / 60 / 90 FPS targets | The first visit to a new area or camera angle may stutter while shaders compile; not every area holds 60 FPS |
 | iPad (M1 or newer) | Development-signed install, resource import, loading saves, touch controller, camera, audio | Well below 60 FPS at the original resolution; the first shader preparation takes a long time; hardware controllers are not fully validated |
-| iPhone | Not supported yet | — |
+| iPhone 15 Pro | Development-signed install, resource import, verified offline shader libraries, warm launch to the title screen | Gameplay, frame rate, memory and thermals have not been measured; no other iPhone has been tried, and chips without BC texture support (before A17 Pro) are untested |
 
 Only v1.4.3 is supported. The preparation scripts verify module fingerprints and refuse other versions.
 
@@ -24,7 +24,7 @@ Only v1.4.3 is supported. The preparation scripts verify module fingerprints and
 - An **Apple silicon Mac** (M1 or newer) with full Xcode, the command line tools and Homebrew.
 - **About 60 GB of free space** (an external drive works). The extracted RomFS alone is about 16 GB; shader caches and builds need more.
 - Your own *Tears of the Kingdom* base game and **v1.4.3 update** (`.nsz`), plus the matching `prod.keys`.
-- For iPad: an Apple developer signing team, a device in Developer Mode and a USB connection.
+- For iPhone or iPad: an Apple developer signing team, a device in Developer Mode and a USB connection.
 
 ## Quick start (Mac)
 
@@ -45,7 +45,7 @@ mkdir -p local/games local/keys
 
 After that, start the game by double-clicking `launch.command` (or running it in a terminal). `quick-load.command` additionally walks the in-game menu and loads the first entry of the save list.
 
-The first launch prepares tens of thousands of shaders. This can take several minutes or longer; the top-right corner of the performance overlay shows the progress. Later launches reuse the cache.
+The first launch prepares tens of thousands of shaders. This can take several minutes or longer; the startup screen shows each stage and its progress. Later launches reuse the cache.
 
 ## Controls
 
@@ -65,7 +65,7 @@ Saves live in `work/save/` inside the project and use the same format as the con
 
 ## FAQ
 
-**The window stays black for a long time after launch.** The first shader preparation is slow; check the progress in the performance overlay (⌘P). The log is `work/logs/native-probe.log`.
+**Startup takes a long time.** The first shader preparation is slow; the startup screen shows the current stage and its progress, and during play the performance overlay (⌘P) shows shader activity. The log is `work/logs/native-probe.log`.
 
 **A preparation script reports a module or version mismatch.** Make sure the update is v1.4.3 and that `local/games/` holds exactly one base game and one update.
 
@@ -76,7 +76,7 @@ Saves live in `work/save/` inside the project and use the same format as the con
 ## For developers
 
 - [Documentation index](docs/README.md)
-- [Building and running](docs/getting-started.md): full Mac and iPad setup
+- [Building and running](docs/getting-started.md): full Mac, iPhone and iPad setup
 - [Source map](docs/architecture.md): components, generated files and where to make changes
 - [Development guide](docs/development.md): tests, diagnostic switches and contribution rules
 - [Repository layout](docs/repository.md): directory roles and local data that never enters Git

@@ -27,11 +27,15 @@ Open it with ⌘, or **View → Controls**. Settings are saved to `work/settings
 | --- | --- | --- |
 | Frame rate | 30 / 60 / 90 FPS | Default 60. A target is not a guarantee; pre-rendered movies still play at 30 |
 | Resolution | Original / 1080 / 720 / 640 | **Original** keeps the game's own dynamic resolution. Fixed modes render the scene at 1920×1080, 1280×720 or 1136×640 |
-| MetalFX | Off / On | Upscales only the final output |
+| MetalFX | Off / Window / 4K | Spatially upscales only the final image: **Window** to the window's pixel size, **4K** to 3840×2160 and then fitted to the window. Both apply only when the window has more pixels than the game image |
 | Fullscreen, Sound, Performance | Off / On | Performance shows the overlay |
 | Rumble | Off / On | Off stops rumble immediately; turning it back on does not replay old pulses. **Test** only checks the host output |
 
-Older settings files are migrated automatically: `896p`/`balanced` become Original, `performance` becomes 720, the removed `480p` becomes 640, and old rumble strengths read as On. Unknown fields are kept.
+Older settings files are migrated automatically: `896p`/`balanced` become Original, `performance` becomes 720, the removed `480p` becomes 640, an old MetalFX On becomes Window, and old rumble strengths read as On. Unknown fields are kept.
+
+## Startup screen
+
+Until the game can draw without stalling, a startup screen covers the window with one progress bar that only moves forward. It shows the current stage: checking the shader libraries, compiling the ones that are missing (a long step on the first launch), starting the game, then loading the shaders and building the pipelines recorded on earlier runs. Stages with a counter show it, for example `Building pipelines 4,000 / 8,452`. The screen fades into the game when the warm-up ends.
 
 ## Performance overlay
 

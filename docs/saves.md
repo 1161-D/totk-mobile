@@ -31,6 +31,6 @@ cp -Rc work/save "work/save-backups/$(date +%Y%m%d-%H%M%S)"
 
 Saves from earlier game versions load in v1.4.3; the game upgrades them itself. If you replace only a `progress.sav`, the matching caption and thumbnail stay old, so the save list may show the wrong place name until the game saves again.
 
-## iPad
+## iPhone / iPad
 
 `./script/ios.sh transfer seed` copies the Mac save to the device once. After that the device keeps its own independent copy and nothing is written back to the Mac. The transfer refuses to overwrite a different save that already exists on the device.

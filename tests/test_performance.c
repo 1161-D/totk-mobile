@@ -35,7 +35,9 @@ int main(void) {
     shader_status_note(SHADER_STEP, 0); assert(shader_status_snapshot().completed == 4000);
     shader_status_note(SHADER_PIPELINES, 0); shader_status_note(SHADER_STEP, 0);
     assert(shader_status_snapshot().phase == SHADER_PIPELINES && !shader_status_snapshot().completed);
+    assert(shader_status_snapshot().runs == 0);
     shader_status_note(SHADER_FINISHED, 0);
+    assert(shader_status_snapshot().runs == 1 && shader_status_snapshot().phase == SHADER_IDLE);
     int evaluations = 0;
     assert(ZELDA_SHADER_BUILD(build_result(1, &evaluations)) == 42);
     assert(ZELDA_SHADER_BUILD(ZELDA_SHADER_BUILD(build_result(2, &evaluations))) == 42);

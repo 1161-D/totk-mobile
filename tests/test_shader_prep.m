@@ -1,5 +1,6 @@
 #include "../host/shader_prep.h"
 #include <assert.h>
+#include <math.h>
 #include <stdatomic.h>
 #include <stdio.h>
 
@@ -36,5 +37,39 @@ int main(void) { @autoreleasepool {
     for (unsigned i = 0; i < 64; i++) assert(((uint32_t *)output.contents)[i] == i * 7 + 3);
     assert([NSFileManager.defaultManager removeItemAtPath:directory error:NULL]);
     assert(shader_prep_run(device, directory, ^(unsigned a, unsigned b) { (void)a; (void)b; }) == 1);
-    puts("Shader preparation: cold fixture, warm reload, failure accounting, progress and GPU output passed");
+    // Startup screen model: stage names from the shared status, then one forward-only bar across all stages.
+    ZeldaShaderStatus idle = {0};
+    assert(shader_screen_state(false, true, 0, idle).stage == SCREEN_CHECKING);
+    assert(shader_screen_state(false, true, 0, (ZeldaShaderStatus){.phase = SHADER_LIBRARIES}).stage == SCREEN_CHECKING);
+    ShaderScreenState compiling = shader_screen_state(false, true, 0, (ZeldaShaderStatus){.phase = SHADER_LIBRARIES, .completed = 50, .total = 100});
+    assert(compiling.stage == SCREEN_COMPILING && compiling.completed == 50 && compiling.total == 100);
+    ZeldaShaderStatus warm[] = {
+        {.runs = 1}, {.phase = SHADER_CHECKING, .runs = 1}, {.phase = SHADER_LIBRARIES, .completed = 10, .total = 20, .runs = 1},
+        {.phase = SHADER_PIPELINES, .runs = 1}, {.phase = SHADER_PIPELINES, .completed = 3, .total = 4, .runs = 1}, {.runs = 2}};
+    ShaderScreenStage stages[] = {SCREEN_STARTING, SCREEN_READING, SCREEN_LOADING, SCREEN_DESCRIBING, SCREEN_BUILDING, SCREEN_READY};
+    for (unsigned i = 0; i < 6; i++) assert(shader_screen_state(true, true, 1, warm[i]).stage == stages[i]);
+    assert(shader_screen_state(true, false, 1, (ZeldaShaderStatus){.runs = 1}).stage == SCREEN_READY);
+    // Uncounted stages creep toward the end of their share without reaching it; counted ones fill it; never backwards.
+    ShaderScreenBar bar = {.warm = true, .stage = -1};
+    double at = 0, last = 0, value = shader_screen_advance(&bar, shader_screen_state(false, true, 0, idle), at);
+    assert(value == 0);
+    for (at = 0.5; at <= 5; at += 0.5) {
+        value = shader_screen_advance(&bar, shader_screen_state(false, true, 0, idle), at);
+        assert(value > last && value < 0.25); last = value;
+    }
+    for (unsigned i = 0; i < 6; i++, at += 1) {
+        double before = value;
+        value = shader_screen_advance(&bar, shader_screen_state(true, true, 1, warm[i]), at);
+        value = shader_screen_advance(&bar, shader_screen_state(true, true, 1, warm[i]), at + 0.5);
+        assert(value >= before && value <= 1);
+    }
+    assert(value == 1);
+    // Counted progress maps onto the stage's share: compilation owns 85% of what is left when a warm-up follows.
+    ShaderScreenBar cold = {.warm = true, .stage = -1};
+    shader_screen_advance(&cold, shader_screen_state(false, true, 0, idle), 0);
+    value = shader_screen_advance(&cold, compiling, 1);
+    assert(fabs(value - 0.85 * 0.5) < 1e-9);
+    value = shader_screen_advance(&cold, shader_screen_state(false, true, 0, (ZeldaShaderStatus){.phase = SHADER_LIBRARIES, .completed = 10, .total = 100}), 2);
+    assert(fabs(value - 0.85 * 0.5) < 1e-9);
+    puts("Shader preparation: cold fixture, warm reload, failure accounting, progress, startup screen model and GPU output passed");
 } }

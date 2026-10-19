@@ -31,6 +31,6 @@ cp -Rc work/save "work/save-backups/$(date +%Y%m%d-%H%M%S)"
 
 较早游戏版本的存档可以在 v1.4.3 中读取，游戏会自行升级。如果只替换某个 `progress.sav`，对应的说明文字和缩略图仍是旧的，存档列表可能显示错误的地名，直到游戏再次保存。
 
-## iPad
+## iPhone / iPad
 
 `./script/ios.sh transfer seed` 会把 Mac 上的存档复制到设备一次。之后设备保存独立的副本，不会回写 Mac。如果设备上已有内容不同的存档，传输会拒绝覆盖。

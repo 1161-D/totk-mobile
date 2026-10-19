@@ -4,7 +4,8 @@ enum {
     SHADER_IDLE, SHADER_CHECKING, SHADER_LIBRARIES, SHADER_PIPELINES,
     SHADER_STEP, SHADER_FINISHED, SHADER_BUILD_BEGIN, SHADER_BUILD_END
 };
-typedef struct { unsigned phase, completed, total, active_builds; } ZeldaShaderStatus;
+// runs counts finished preparation/warm-up passes, so a poller cannot miss one that ends between two samples.
+typedef struct { unsigned phase, completed, total, active_builds, runs; } ZeldaShaderStatus;
 
 void shader_status_note(unsigned event, unsigned total);
 ZeldaShaderStatus shader_status_snapshot(void);

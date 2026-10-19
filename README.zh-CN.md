@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-Zelda-Mobile 让 Nintendo Switch 版《塞尔达传说：王国之泪》**v1.4.3** 在 Apple silicon Mac 与 iPad 上原生运行。游戏的 ARM64 代码直接在 Apple 芯片上执行，系统服务由宿主重新实现，NVN 图形命令翻译为 Metal。Mac 与 iOS 前端共用同一套核心。
+Zelda-Mobile 让 Nintendo Switch 版《塞尔达传说：王国之泪》**v1.4.3** 在 Apple silicon Mac 与 iPad 上原生运行，iPhone 版处于早期阶段。游戏的 ARM64 代码直接在 Apple 芯片上执行，系统服务由宿主重新实现，NVN 图形命令翻译为 Metal。Mac 与 iOS 前端共用同一套核心。
 
 > [!IMPORTANT]
 > 本项目与任天堂无关，也未获其授权或认可。仓库**只包含源码**：不含游戏本体、更新包、密钥、存档、游戏着色器或任何由游戏派生的数据，也不说明获取途径。请只使用你自己拥有、并从自己主机导出的游戏与密钥。
@@ -15,7 +15,7 @@ Zelda-Mobile 让 Nintendo Switch 版《塞尔达传说：王国之泪》**v1.4.3
 | --- | --- | --- |
 | Apple silicon Mac | 读档与场景运行、键盘和 Xbox 手柄（含震动）、声音、过场动画、30 / 60 / 90 FPS 目标 | 首次进入新区域或新视角时可能因着色器编译短暂卡顿；并非所有区域都能保持 60 FPS |
 | iPad（M1 及以上） | 开发签名安装、资源导入、读档、触控手柄、镜头与声音 | 原版分辨率下明显低于 60 FPS；首次准备着色器耗时较长；实体手柄未完整验证 |
-| iPhone | 暂不支持 | — |
+| iPhone 15 Pro | 开发签名安装、资源导入、经校验的离线着色器库、缓存热启动进入标题画面 | 尚未测量实际游玩、帧率、内存和发热；未试过其他 iPhone，不支持 BC 贴图压缩的芯片（A17 Pro 之前）未经测试 |
 
 只支持 v1.4.3。准备脚本会校验模块指纹，拒绝其他版本。
 
@@ -24,7 +24,7 @@ Zelda-Mobile 让 Nintendo Switch 版《塞尔达传说：王国之泪》**v1.4.3
 - **Apple silicon Mac**（M1 或更新），安装完整 Xcode、命令行工具与 Homebrew。
 - **约 60 GB 可用空间**（可以放在外置盘）。解出的 RomFS 约 16 GB，着色器缓存和构建产物另需空间。
 - 你自己的《王国之泪》本体与 **v1.4.3 更新包**（`.nsz`），以及匹配的 `prod.keys`。
-- iPad 版另需 Apple 开发者签名团队、已开启开发者模式的设备和 USB 连接。
+- iPhone / iPad 版另需 Apple 开发者签名团队、已开启开发者模式的设备和 USB 连接。
 
 ## 快速开始（Mac）
 
@@ -45,7 +45,7 @@ mkdir -p local/games local/keys
 
 之后双击 `launch.command`（或在终端运行）即可启动。`quick-load.command` 还会自动走游戏菜单，读取存档列表第一项。
 
-首次启动要准备几万个着色器，可能需要数分钟或更久，性能面板右上角会显示进度；之后的启动会复用缓存。
+首次启动要准备几万个着色器，可能需要数分钟或更久，启动画面会显示各阶段与进度；之后的启动会复用缓存。
 
 ## 操作
 
@@ -65,7 +65,7 @@ Xbox 手柄经蓝牙或 USB 连接后自动接入。帧率、分辨率、MetalFX
 
 ## 常见问题
 
-**启动后窗口长时间黑屏？** 首次准备着色器较慢，可在性能面板（⌘P）查看进度。日志在 `work/logs/native-probe.log`。
+**启动时间很长？** 首次准备着色器较慢，启动画面会显示当前阶段和进度；游戏中可在性能面板（⌘P）查看着色器活动。日志在 `work/logs/native-probe.log`。
 
 **准备脚本报模块或版本不匹配？** 确认更新包是 v1.4.3，并且 `local/games/` 里本体和更新各只有一个。
 
@@ -76,7 +76,7 @@ Xbox 手柄经蓝牙或 USB 连接后自动接入。帧率、分辨率、MetalFX
 ## 开发者
 
 - [文档索引](docs/README.zh-CN.md)
-- [构建与运行](docs/getting-started.zh-CN.md)：Mac 与 iPad 的完整准备流程
+- [构建与运行](docs/getting-started.zh-CN.md)：Mac、iPhone 与 iPad 的完整准备流程
 - [源码地图](docs/architecture.zh-CN.md)：组件、生成文件和修改入口
 - [开发指南](docs/development.zh-CN.md)：测试、诊断开关与贡献约定
 - [仓库结构](docs/repository.zh-CN.md)：目录职责与不进入 Git 的本地数据

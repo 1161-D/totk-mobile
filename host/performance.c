@@ -23,7 +23,7 @@ void shader_status_note(unsigned event, unsigned total) {
         case SHADER_STEP:
             if (shader_status.completed < shader_status.total) shader_status.completed++; break;
         case SHADER_FINISHED:
-            shader_status.phase = SHADER_IDLE; shader_status.completed = shader_status.total = 0; break;
+            shader_status.phase = SHADER_IDLE; shader_status.completed = shader_status.total = 0; shader_status.runs++; break;
         case SHADER_BUILD_BEGIN: shader_status.active_builds++; break;
         case SHADER_BUILD_END: if (shader_status.active_builds) shader_status.active_builds--; break;
     }
