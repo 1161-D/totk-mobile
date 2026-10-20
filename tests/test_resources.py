@@ -79,8 +79,15 @@ class ResourceTests(unittest.TestCase):
     def test_hactool_receives_only_required_keys(self):
         required = dict(header_key=bytes(range(32)), titlekek_0e=bytes(16), titlekek_0f=bytes(range(16)))
         keys = required | dict(mariko_master_kek_source_05=bytes(17), master_key_15=bytes(16))
-        self.assertEqual(hactool_key_subset(keys, [{'generation': 14}, {'generation': 15}]), required)
+        rights = bytes(range(1, 17))
+        plans = [{'generation': 14, 'rights': rights}, {'generation': 15, 'rights': rights}]
+        self.assertEqual(hactool_key_subset(keys, plans), required)
         self.assertEqual(len(keys), 5)
+        # A standard-crypto base (zero rights ID) also needs its key-area key.
+        keys['key_area_key_application_0e'] = bytes(16)
+        plans[0]['rights'] = bytes(16)
+        self.assertEqual(hactool_key_subset(keys, plans),
+                         required | {'key_area_key_application_0e': bytes(16)})
 
     def test_header_key_section_hash_and_version_bounds(self):
         keys = {'header_key': bytes(range(32)), 'titlekek_0f': bytes(range(16))}

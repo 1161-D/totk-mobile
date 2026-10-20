@@ -106,7 +106,8 @@ def inspect_package(path, keys, update):
                 content_key = key
             sections.append((start, size, crypto, key, counter))
             end = start + size
-        if end != nca_size or content_key is None or not any(header[0x230:0x240]):
+        # A zero rights ID means standard crypto: hactool unwraps the key area itself.
+        if end != nca_size or content_key is None or (not any(header[0x230:0x240]) and header[0x207] != 0):
             raise ValueError('unsupported NCZ program encryption layout')
         compressed = stream.tell()
         if exact(stream, 4) != b'\x28\xb5\x2f\xfd':
@@ -155,6 +156,7 @@ def restore_ncz(plan, output):
 def hactool_key_subset(keys, plans):
     # Unrelated console keys are unnecessary and may use formats hactool rejects.
     names = {'header_key'} | {f'titlekek_{p["generation"]:02x}' for p in plans}
+    names |= {f'key_area_key_application_{p["generation"]:02x}' for p in plans if not any(p['rights'])}
     return {name: keys[name] for name in sorted(names)}
 
 
@@ -172,7 +174,7 @@ def extract(base, update, key_path, hactool, output):
         temp = Path(temporary)
         titlefile = temp / 'title.keys'
         prodfile = temp / 'prod.keys'
-        titlekeys = {p['rights'].hex(): p['encrypted_key'] for p in plans}
+        titlekeys = {p['rights'].hex(): p['encrypted_key'] for p in plans if any(p['rights'])}
         for path, entries in ((prodfile, hactool_key_subset(keys, plans)), (titlefile, titlekeys)):
             with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as f:
                 for name, value in entries.items():
