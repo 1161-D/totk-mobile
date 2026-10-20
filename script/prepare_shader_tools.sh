@@ -38,7 +38,8 @@ anchor = 'public bool QueryHostSupportsTextureShadowLod() => true;'
 if code.count(anchor) != 1:
     raise SystemExit('Inspect the upstream host capability queries before preparing the translator')
 # Metal has no FP64; reuse the translator's existing double-to-float lowering.
-code = code.replace(anchor, 'public bool QueryHostSupportsDepthClipControl() => false;\n        public bool QueryHostSupportsShaderFloat64() => false;\n        ' + anchor)
+# Metal has no four-offset gather, and upstream emits register offsets as an invalid OpConstantComposite; split it instead.
+code = code.replace(anchor, 'public bool QueryHostSupportsDepthClipControl() => false;\n        public bool QueryHostSupportsShaderFloat64() => false;\n        public bool QueryHostSupportsTextureGatherOffsets() => false;\n        ' + anchor)
 anchor = 'ShaderProgram p = ctx.Translate();'
 if code.count(anchor) != 1:
     raise SystemExit('Inspect the upstream shader translation entry before preparing the translator')
