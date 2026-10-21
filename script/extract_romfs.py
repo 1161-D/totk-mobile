@@ -71,8 +71,10 @@ def inspect_package(path, keys, update):
         if header[0x205] != 0 or title != 0x0100f2c0115b6000:
             raise ValueError('package does not contain the expected Zelda program')
         generation = max(0, max(header[0x206], header[0x220]) - 1)
+        rights = bytes(header[0x230:0x240])
         titlekek = keys.get(f'titlekek_{generation:02x}', b'')
-        if len(titlekek) != 16:
+        # A zero rights ID means standard crypto, which needs no titlekek.
+        if any(rights) and len(titlekek) != 16:
             raise ValueError(f'missing titlekek generation {generation:02x}')
         romfs_index, romfs_size, metadata_hash = None, None, None
         for index in range(4):
@@ -106,18 +108,21 @@ def inspect_package(path, keys, update):
                 content_key = key
             sections.append((start, size, crypto, key, counter))
             end = start + size
-        if end != nca_size or content_key is None or not any(header[0x230:0x240]):
+        # A zero rights ID means standard crypto: hactool unwraps the key area itself.
+        if end != nca_size or content_key is None or (not any(rights) and header[0x207] != 0):
             raise ValueError('unsupported NCZ program encryption layout')
         compressed = stream.tell()
         if exact(stream, 4) != b'\x28\xb5\x2f\xfd':
             raise ValueError('only solid Zstandard NCZ is supported')
         # Recreate the title-key mapping from the key already embedded in this NCZ.
-        cipher = Cipher(algorithms.AES(titlekek), modes.ECB()).encryptor()
-        encrypted_key = cipher.update(content_key) + cipher.finalize()
+        encrypted_key = None
+        if any(rights):
+            cipher = Cipher(algorithms.AES(titlekek), modes.ECB()).encryptor()
+            encrypted_key = cipher.update(content_key) + cipher.finalize()
         return dict(path=path, raw=raw, offset=offset, length=length, compressed=compressed,
                     sections=sections, nca_size=nca_size, name=name, generation=generation,
                     romfs_index=romfs_index, romfs_size=romfs_size, metadata_hash=metadata_hash,
-                    rights=bytes(header[0x230:0x240]), encrypted_key=encrypted_key)
+                    rights=rights, encrypted_key=encrypted_key)
 
 
 def restore_ncz(plan, output):
@@ -154,7 +159,8 @@ def restore_ncz(plan, output):
 
 def hactool_key_subset(keys, plans):
     # Unrelated console keys are unnecessary and may use formats hactool rejects.
-    names = {'header_key'} | {f'titlekek_{p["generation"]:02x}' for p in plans}
+    names = {'header_key'} | {f'titlekek_{p["generation"]:02x}' for p in plans if any(p['rights'])}
+    names |= {f'key_area_key_application_{p["generation"]:02x}' for p in plans if not any(p['rights'])}
     return {name: keys[name] for name in sorted(names)}
 
 
@@ -172,7 +178,7 @@ def extract(base, update, key_path, hactool, output):
         temp = Path(temporary)
         titlefile = temp / 'title.keys'
         prodfile = temp / 'prod.keys'
-        titlekeys = {p['rights'].hex(): p['encrypted_key'] for p in plans}
+        titlekeys = {p['rights'].hex(): p['encrypted_key'] for p in plans if any(p['rights'])}
         for path, entries in ((prodfile, hactool_key_subset(keys, plans)), (titlefile, titlekeys)):
             with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as f:
                 for name, value in entries.items():

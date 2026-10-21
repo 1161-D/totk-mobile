@@ -79,8 +79,15 @@ class ResourceTests(unittest.TestCase):
     def test_hactool_receives_only_required_keys(self):
         required = dict(header_key=bytes(range(32)), titlekek_0e=bytes(16), titlekek_0f=bytes(range(16)))
         keys = required | dict(mariko_master_kek_source_05=bytes(17), master_key_15=bytes(16))
-        self.assertEqual(hactool_key_subset(keys, [{'generation': 14}, {'generation': 15}]), required)
+        rights = bytes(range(1, 17))
+        plans = [{'generation': 14, 'rights': rights}, {'generation': 15, 'rights': rights}]
+        self.assertEqual(hactool_key_subset(keys, plans), required)
         self.assertEqual(len(keys), 5)
+        # A standard-crypto base (zero rights ID) needs its key-area key instead of a titlekek.
+        keys['key_area_key_application_0e'] = bytes(16)
+        plans[0]['rights'] = bytes(16)
+        self.assertEqual(hactool_key_subset(keys, plans),
+                         dict(header_key=bytes(range(32)), key_area_key_application_0e=bytes(16), titlekek_0f=bytes(range(16))))
 
     def test_header_key_section_hash_and_version_bounds(self):
         keys = {'header_key': bytes(range(32)), 'titlekek_0f': bytes(range(16))}
@@ -107,6 +114,11 @@ class ResourceTests(unittest.TestCase):
             plan = inspect_package(p, keys, True)
             self.assertEqual((plan['generation'], plan['romfs_size']), (15, 0x1000))
             with self.assertRaises(ValueError): inspect_package(p, keys, False)
+            header_only = {'header_key': keys['header_key']}
+            with self.assertRaisesRegex(ValueError, 'missing titlekek'): inspect_package(p, header_only, True)
+            standard = bytearray(header); standard[0x230:0x240] = bytes(16)
+            p.write_bytes(package(xts(standard, keys['header_key'])))
+            self.assertIsNone(inspect_package(p, header_only, True)['encrypted_key'])
             header[0x410] ^= 1
             p.write_bytes(package(xts(header, keys['header_key'])))
             with self.assertRaises(ValueError): inspect_package(p, keys, True)
